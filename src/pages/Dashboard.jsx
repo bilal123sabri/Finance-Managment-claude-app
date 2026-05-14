@@ -6,7 +6,6 @@ import {
 } from 'recharts'
 import { format, parseISO } from 'date-fns'
 import { useFinance } from '../context/FinanceContext'
-import { MONTHLY_DATA } from '../data/mockData'
 
 const stagger = { animate: { transition: { staggerChildren: 0.07 } } }
 const fadeUp = {
@@ -74,81 +73,45 @@ export default function Dashboard({ onNavigate }) {
     currentMonthExpenses,
     netSaved,
     savingsRate,
+    srChangePct,
     incomeChangePct,
     expenseChangePct,
     netSavedChangePct,
     categorySpending,
     budgets,
+    monthlyChartData,
   } = useFinance()
 
-  const isEmpty = transactions.length === 0
+  const isEmpty   = transactions.length === 0
+  const recentTx  = transactions.slice(0, 6)
 
-  const prevSavingsRate = MONTHLY_DATA[MONTHLY_DATA.length - 2]
-  const prevSR = prevSavingsRate
-    ? (((prevSavingsRate.income - prevSavingsRate.expenses) / prevSavingsRate.income) * 100).toFixed(1)
-    : null
-  const srChange = prevSR !== null
-    ? (parseFloat(savingsRate) - parseFloat(prevSR)).toFixed(1)
-    : null
-
-  const recentTx = transactions.slice(0, 6)
+  // Only show chart if at least one month has data
+  const hasChartData = monthlyChartData.some(d => d.income > 0 || d.expenses > 0)
 
   return (
     <motion.div variants={stagger} initial="initial" animate="animate" className="space-y-5">
 
-      {/* Welcome banner — only shown when user has no data yet */}
+      {/* Welcome banner — only when user has no transactions yet */}
       {isEmpty && (
         <motion.div
           variants={fadeUp}
           className="bg-gradient-to-br from-emerald-500/10 to-zinc-900 border border-emerald-500/20 rounded-2xl p-6"
         >
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <p className="text-emerald-400 text-xs font-medium uppercase tracking-widest mb-1">Welcome to FinFlow</p>
-              <h2 className="text-zinc-100 text-xl font-semibold">Hey {getAuthName()}, let's get started 👋</h2>
-              <p className="text-zinc-500 text-sm mt-1.5 leading-relaxed">
-                Your dashboard is ready. Add your first transaction to start tracking your finances.
-              </p>
-            </div>
-          </div>
-
-          {/* Quick-start steps */}
+          <p className="text-emerald-400 text-xs font-medium uppercase tracking-widest mb-1">Welcome to FinFlow</p>
+          <h2 className="text-zinc-100 text-xl font-semibold">Hey {getAuthName()}, let's get started 👋</h2>
+          <p className="text-zinc-500 text-sm mt-1.5 leading-relaxed">
+            Your dashboard is ready. Add your first transaction to start tracking your finances.
+          </p>
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mt-5">
             {[
-              {
-                step: '1',
-                title: 'Add a transaction',
-                desc: 'Record income or an expense to get started',
-                icon: Plus,
-                action: () => {},
-                cta: 'Use the + button in the top bar',
-              },
-              {
-                step: '2',
-                title: 'Set up budgets',
-                desc: 'Create spending limits by category',
-                icon: Wallet,
-                action: () => onNavigate('budgets'),
-                cta: 'Go to Budgets →',
-              },
-              {
-                step: '3',
-                title: 'View analytics',
-                desc: 'See charts and trends once you have data',
-                icon: ChartBar,
-                action: () => onNavigate('analytics'),
-                cta: 'Go to Analytics →',
-              },
-            ].map(({ step, title, desc, icon: Icon, action, cta }) => (
-              <div
-                key={step}
-                onClick={action}
-                className="bg-zinc-900/70 border border-zinc-800 hover:border-zinc-700 rounded-xl p-4 transition-colors cursor-pointer"
-              >
+              { step: '1', title: 'Add a transaction', desc: 'Record income or an expense', icon: Plus,     cta: 'Use the + button in the top bar', action: null },
+              { step: '2', title: 'Set up budgets',    desc: 'Create spending limits',      icon: Wallet,   cta: 'Go to Budgets →',               action: () => onNavigate('budgets') },
+              { step: '3', title: 'View analytics',    desc: 'Charts update as you add data', icon: ChartBar, cta: 'Go to Analytics →',             action: () => onNavigate('analytics') },
+            ].map(({ step, title, desc, icon: Icon, cta, action }) => (
+              <div key={step} onClick={action || undefined}
+                className={`bg-zinc-900/70 border border-zinc-800 hover:border-zinc-700 rounded-xl p-4 transition-colors ${action ? 'cursor-pointer' : ''}`}>
                 <div className="flex items-center gap-3 mb-2">
-                  <span className="w-6 h-6 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-bold flex items-center justify-center flex-shrink-0">
-                    {step}
-                  </span>
+                  <span className="w-6 h-6 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-bold flex items-center justify-center flex-shrink-0">{step}</span>
                   <Icon size={14} className="text-zinc-400" />
                   <p className="text-zinc-200 text-sm font-medium">{title}</p>
                 </div>
@@ -162,39 +125,15 @@ export default function Dashboard({ onNavigate }) {
 
       {/* 4 Stat Cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard
-          label="Monthly Income"
-          value={`$${currentMonthIncome.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-          changePct={incomeChangePct}
-          positiveIsGood={true}
-          Icon={ArrowUpRight}
-        />
-        <StatCard
-          label="Monthly Expenses"
-          value={`$${currentMonthExpenses.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-          changePct={expenseChangePct}
-          positiveIsGood={false}
-          Icon={ArrowDownRight}
-        />
-        <StatCard
-          label="Net Saved"
-          value={`$${netSaved.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-          changePct={netSavedChangePct}
-          positiveIsGood={true}
-          Icon={TrendUp}
-        />
-        <StatCard
-          label="Savings Rate"
-          value={`${savingsRate}%`}
-          changePct={srChange}
-          positiveIsGood={true}
-          Icon={Percent}
-        />
+        <StatCard label="Monthly Income"   value={`$${currentMonthIncome.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}   changePct={incomeChangePct}    positiveIsGood={true}  Icon={ArrowUpRight} />
+        <StatCard label="Monthly Expenses" value={`$${currentMonthExpenses.toLocaleString('en-US', { minimumFractionDigits: 2 })}`} changePct={expenseChangePct}   positiveIsGood={false} Icon={ArrowDownRight} />
+        <StatCard label="Net Saved"        value={`$${netSaved.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}             changePct={netSavedChangePct}  positiveIsGood={true}  Icon={TrendUp} />
+        <StatCard label="Savings Rate"     value={`${savingsRate}%`}                                                                changePct={srChangePct}        positiveIsGood={true}  Icon={Percent} />
       </div>
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        {/* Cash Flow Area */}
+        {/* Cash Flow — only real data, empty state if none */}
         <motion.div variants={fadeUp} className="xl:col-span-2 bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
           <div className="flex items-center justify-between mb-5">
             <div>
@@ -206,26 +145,36 @@ export default function Dashboard({ onNavigate }) {
               <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-400" /><span className="text-zinc-500">Expenses</span></div>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={MONTHLY_DATA} margin={{ top: 4, right: 4, bottom: 0, left: -10 }}>
-              <defs>
-                <linearGradient id="gIncome" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity={0.18} />
-                  <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="gExpense" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#f87171" stopOpacity={0.14} />
-                  <stop offset="100%" stopColor="#f87171" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-              <XAxis dataKey="month" tick={{ fill: '#71717a', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#71717a', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v / 1000}k`} />
-              <Tooltip content={<ChartTooltip />} />
-              <Area type="monotone" dataKey="income" name="Income" stroke="#10b981" strokeWidth={2} fill="url(#gIncome)" />
-              <Area type="monotone" dataKey="expenses" name="Expenses" stroke="#f87171" strokeWidth={2} fill="url(#gExpense)" />
-            </AreaChart>
-          </ResponsiveContainer>
+          {hasChartData ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={monthlyChartData} margin={{ top: 4, right: 4, bottom: 0, left: -10 }}>
+                <defs>
+                  <linearGradient id="gIncome" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.18} />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="gExpense" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#f87171" stopOpacity={0.14} />
+                    <stop offset="100%" stopColor="#f87171" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                <XAxis dataKey="month" tick={{ fill: '#71717a', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#71717a', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v / 1000}k`} />
+                <Tooltip content={<ChartTooltip />} />
+                <Area type="monotone" dataKey="income"   name="Income"   stroke="#10b981" strokeWidth={2} fill="url(#gIncome)" />
+                <Area type="monotone" dataKey="expenses" name="Expenses" stroke="#f87171" strokeWidth={2} fill="url(#gExpense)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-[200px] text-center">
+              <div className="w-10 h-10 rounded-2xl bg-zinc-800 flex items-center justify-center mb-3">
+                <ChartBar size={18} color="#52525b" />
+              </div>
+              <p className="text-zinc-500 text-sm font-medium">No data yet</p>
+              <p className="text-zinc-600 text-xs mt-1">Add transactions to see your cash flow</p>
+            </div>
+          )}
         </motion.div>
 
         {/* Spending Donut */}
@@ -253,7 +202,13 @@ export default function Dashboard({ onNavigate }) {
               </div>
             </>
           ) : (
-            <div className="flex items-center justify-center h-40 text-zinc-600 text-sm">No data yet</div>
+            <div className="flex flex-col items-center justify-center h-[160px] text-center">
+              <div className="w-10 h-10 rounded-2xl bg-zinc-800 flex items-center justify-center mb-3">
+                <Percent size={18} color="#52525b" />
+              </div>
+              <p className="text-zinc-500 text-sm font-medium">No spending yet</p>
+              <p className="text-zinc-600 text-xs mt-1">Add expense transactions to see breakdown</p>
+            </div>
           )}
         </motion.div>
       </div>
@@ -266,28 +221,32 @@ export default function Dashboard({ onNavigate }) {
             <h3 className="text-zinc-100 font-semibold text-sm">Recent Transactions</h3>
             <button onClick={() => onNavigate('transactions')} className="text-emerald-400 text-xs font-medium hover:text-emerald-300 transition-colors cursor-pointer">View all</button>
           </div>
-          <div>
-            {recentTx.length === 0 ? (
-              <p className="text-zinc-600 text-sm text-center py-8">No transactions yet</p>
-            ) : recentTx.map((tx, i) => {
-              const isIncome = tx.amount > 0
-              return (
-                <div key={tx.id} className={`flex items-center gap-3 py-2.5 ${i < recentTx.length - 1 ? 'border-b border-zinc-800/60' : ''}`}>
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0"
-                    style={{ background: isIncome ? 'rgba(16,185,129,0.1)' : '#27272a', color: isIncome ? '#34d399' : '#a1a1aa' }}>
-                    {tx.description.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-zinc-200 text-sm truncate">{tx.description}</p>
-                    <p className="text-zinc-600 text-xs">{format(parseISO(tx.date), 'MMM d, yyyy')}</p>
-                  </div>
-                  <span className={`font-mono text-sm font-semibold flex-shrink-0 ${isIncome ? 'text-emerald-400' : 'text-zinc-300'}`}>
-                    {isIncome ? '+' : '-'}${Math.abs(tx.amount).toFixed(2)}
-                  </span>
+          {recentTx.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <div className="w-10 h-10 rounded-2xl bg-zinc-800 flex items-center justify-center mb-3">
+                <ArrowUpRight size={18} color="#52525b" />
+              </div>
+              <p className="text-zinc-500 text-sm font-medium">No transactions yet</p>
+              <p className="text-zinc-600 text-xs mt-1">Click + to add your first transaction</p>
+            </div>
+          ) : recentTx.map((tx, i) => {
+            const isIncome = tx.amount > 0
+            return (
+              <div key={tx.id} className={`flex items-center gap-3 py-2.5 ${i < recentTx.length - 1 ? 'border-b border-zinc-800/60' : ''}`}>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0"
+                  style={{ background: isIncome ? 'rgba(16,185,129,0.1)' : '#27272a', color: isIncome ? '#34d399' : '#a1a1aa' }}>
+                  {tx.description.charAt(0)}
                 </div>
-              )
-            })}
-          </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-zinc-200 text-sm truncate">{tx.description}</p>
+                  <p className="text-zinc-600 text-xs">{format(parseISO(tx.date), 'MMM d, yyyy')}</p>
+                </div>
+                <span className={`font-mono text-sm font-semibold flex-shrink-0 ${isIncome ? 'text-emerald-400' : 'text-zinc-300'}`}>
+                  {isIncome ? '+' : '-'}${Math.abs(tx.amount).toFixed(2)}
+                </span>
+              </div>
+            )
+          })}
         </motion.div>
 
         {/* Budget Overview */}
@@ -297,11 +256,17 @@ export default function Dashboard({ onNavigate }) {
             <button onClick={() => onNavigate('budgets')} className="text-emerald-400 text-xs font-medium hover:text-emerald-300 transition-colors cursor-pointer">Manage</button>
           </div>
           {budgets.length === 0 ? (
-            <p className="text-zinc-600 text-sm text-center py-8">No budgets set</p>
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <div className="w-10 h-10 rounded-2xl bg-zinc-800 flex items-center justify-center mb-3">
+                <Wallet size={18} color="#52525b" />
+              </div>
+              <p className="text-zinc-500 text-sm font-medium">No budgets set</p>
+              <p className="text-zinc-600 text-xs mt-1">Go to Budgets to set spending limits</p>
+            </div>
           ) : (
             <div className="space-y-4">
               {budgets.slice(0, 5).map(bud => {
-                const pct = Math.min((bud.spent / bud.limit) * 100, 100)
+                const pct  = Math.min((bud.spent / bud.limit) * 100, 100)
                 const over = bud.spent > bud.limit
                 return (
                   <div key={bud.id}>

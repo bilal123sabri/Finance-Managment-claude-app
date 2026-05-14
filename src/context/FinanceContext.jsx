@@ -1,42 +1,34 @@
 import { createContext, useContext, useState, useEffect, useMemo } from 'react'
-import { ACCOUNTS, TRANSACTIONS, BUDGETS, CATEGORIES, MONTHLY_DATA } from '../data/mockData'
+import { ACCOUNTS, TRANSACTIONS, BUDGETS, CATEGORIES } from '../data/mockData'
 
 const FinanceContext = createContext(null)
 
-const DEMO_EMAIL = 'bilal@finflow.app'
-
-// Default accounts for new users — same structure but zero balances
+const DEMO_EMAIL    = 'bilal@finflow.app'
 const EMPTY_ACCOUNTS = ACCOUNTS.map(a => ({ ...a, balance: 0 }))
 
 export function FinanceProvider({ children, userEmail }) {
   const isDemo = userEmail === DEMO_EMAIL
-
-  // Per-user storage keys so each account has completely isolated data
   const k = (name) => `ff_${name}__${userEmail}`
 
   // ── State ────────────────────────────────────────────────────────────────
   const [accounts, setAccounts] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(k('accounts'))) || (isDemo ? ACCOUNTS : EMPTY_ACCOUNTS)
-    } catch { return isDemo ? ACCOUNTS : EMPTY_ACCOUNTS }
+    try { return JSON.parse(localStorage.getItem(k('accounts'))) || (isDemo ? ACCOUNTS : EMPTY_ACCOUNTS) }
+    catch { return isDemo ? ACCOUNTS : EMPTY_ACCOUNTS }
   })
 
   const [transactions, setTransactions] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(k('transactions'))) || (isDemo ? TRANSACTIONS : [])
-    } catch { return isDemo ? TRANSACTIONS : [] }
+    try { return JSON.parse(localStorage.getItem(k('transactions'))) || (isDemo ? TRANSACTIONS : []) }
+    catch { return isDemo ? TRANSACTIONS : [] }
   })
 
   const [budgets, setBudgets] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(k('budgets'))) || (isDemo ? BUDGETS : [])
-    } catch { return isDemo ? BUDGETS : [] }
+    try { return JSON.parse(localStorage.getItem(k('budgets'))) || (isDemo ? BUDGETS : []) }
+    catch { return isDemo ? BUDGETS : [] }
   })
 
   const [categories, setCategories] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(k('categories'))) || CATEGORIES
-    } catch { return CATEGORIES }
+    try { return JSON.parse(localStorage.getItem(k('categories'))) || CATEGORIES }
+    catch { return CATEGORIES }
   })
 
   // ── Persistence ──────────────────────────────────────────────────────────
@@ -54,7 +46,6 @@ export function FinanceProvider({ children, userEmail }) {
   const updateCategory = (id, changes) => setCategories(prev => prev.map(c => c.id === id ? { ...c, ...changes } : c))
 
   const resetData = () => {
-    // Only wipe this user's keys
     localStorage.removeItem(k('accounts'))
     localStorage.removeItem(k('transactions'))
     localStorage.removeItem(k('budgets'))
@@ -63,16 +54,17 @@ export function FinanceProvider({ children, userEmail }) {
     window.location.reload()
   }
 
-  // ── Derived values ───────────────────────────────────────────────────────
-  const totalBalance = useMemo(
-    () => accounts.reduce((s, a) => s + a.balance, 0),
-    [accounts]
-  )
-
+  // ── Date helpers ─────────────────────────────────────────────────────────
   const now       = new Date()
   const thisMonth = now.getMonth()
   const thisYear  = now.getFullYear()
 
+  // Previous month
+  const prevMonthDate = new Date(thisYear, thisMonth - 1, 1)
+  const prevMo        = prevMonthDate.getMonth()
+  const prevYr        = prevMonthDate.getFullYear()
+
+  // ── Current month transactions ───────────────────────────────────────────
   const currentMonthTx = useMemo(() =>
     transactions.filter(t => {
       const d = new Date(t.date)
@@ -93,11 +85,35 @@ export function FinanceProvider({ children, userEmail }) {
 
   const netSaved = currentMonthIncome - currentMonthExpenses
 
-  const prevRef     = MONTHLY_DATA[MONTHLY_DATA.length - 2]
-  const prevIncome   = prevRef?.income   ?? 0
-  const prevExpenses = prevRef?.expenses ?? 0
-  const prevNet      = prevIncome - prevExpenses
+  // ── Previous month — computed from REAL transactions ─────────────────────
+  const prevMonthTx = useMemo(() =>
+    transactions.filter(t => {
+      const d = new Date(t.date)
+      return d.getMonth() === prevMo && d.getFullYear() === prevYr
+    }),
+    [transactions, prevMo, prevYr]
+  )
 
+  const prevIncome = useMemo(() =>
+    prevMonthTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
+    [prevMonthTx]
+  )
+
+  const prevExpenses = useMemo(() =>
+    prevMonthTx.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0),
+    [prevMonthTx]
+  )
+
+  const prevNet = prevIncome - prevExpenses
+
+  const prevSavingsRate = useMemo(() =>
+    prevIncome > 0
+      ? ((prevIncome - prevExpenses) / prevIncome * 100).toFixed(1)
+      : null,
+    [prevIncome, prevExpenses]
+  )
+
+  // ── Month-over-month change percentages ───────────────────────────────────
   const incomeChangePct = useMemo(() =>
     prevIncome > 0 ? ((currentMonthIncome - prevIncome) / prevIncome * 100).toFixed(1) : null,
     [currentMonthIncome, prevIncome]
@@ -120,6 +136,19 @@ export function FinanceProvider({ children, userEmail }) {
     [currentMonthIncome, currentMonthExpenses]
   )
 
+  const srChangePct = useMemo(() =>
+    prevSavingsRate !== null
+      ? (parseFloat(savingsRate) - parseFloat(prevSavingsRate)).toFixed(1)
+      : null,
+    [savingsRate, prevSavingsRate]
+  )
+
+  // ── Net worth ─────────────────────────────────────────────────────────────
+  const totalBalance = useMemo(
+    () => accounts.reduce((s, a) => s + a.balance, 0),
+    [accounts]
+  )
+
   const netWorthChange = useMemo(() =>
     currentMonthTx.reduce((s, t) => s + t.amount, 0),
     [currentMonthTx]
@@ -131,6 +160,29 @@ export function FinanceProvider({ children, userEmail }) {
     return (netWorthChange / prevBalance * 100).toFixed(1)
   }, [totalBalance, netWorthChange])
 
+  // ── Monthly chart data — last 7 months from REAL transactions ─────────────
+  const monthlyChartData = useMemo(() =>
+    Array.from({ length: 7 }, (_, i) => {
+      const d   = new Date(thisYear, thisMonth - (6 - i), 1)
+      const mo  = d.getMonth()
+      const yr  = d.getFullYear()
+      const label = d.toLocaleString('default', { month: 'short' })
+
+      const monthTx  = transactions.filter(t => {
+        const td = new Date(t.date)
+        return td.getMonth() === mo && td.getFullYear() === yr
+      })
+      const income   = Math.round(monthTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0))
+      const expenses = Math.round(monthTx.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0))
+      const net = income - expenses
+      const sr  = income > 0 ? Math.round((net / income) * 100) : 0
+
+      return { month: label, income, expenses, net, savingsRate: sr }
+    }),
+    [transactions, thisMonth, thisYear]
+  )
+
+  // ── Category spending ─────────────────────────────────────────────────────
   const categorySpending = useMemo(() =>
     categories
       .filter(c => c.id !== 'income')
@@ -145,6 +197,7 @@ export function FinanceProvider({ children, userEmail }) {
     [categories, currentMonthTx]
   )
 
+  // ── Budgets with real spent amounts ──────────────────────────────────────
   const budgetsWithSpent = useMemo(() =>
     budgets.map(bud => {
       const catInfo = categories.find(c => c.id === bud.category)
@@ -181,11 +234,13 @@ export function FinanceProvider({ children, userEmail }) {
       currentMonthExpenses,
       netSaved,
       savingsRate,
+      srChangePct,
       incomeChangePct,
       expenseChangePct,
       netSavedChangePct,
       netWorthChange,
       netWorthChangePct,
+      monthlyChartData,
       categorySpending,
       budgetAlerts,
       addTransaction,
