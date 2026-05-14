@@ -10,6 +10,7 @@ import Budgets from './pages/Budgets'
 import Analytics from './pages/Analytics'
 import Accounts from './pages/Accounts'
 import Settings from './pages/Settings'
+import Goals from './pages/Goals'
 import Login from './pages/Login'
 
 const PAGES = {
@@ -18,6 +19,7 @@ const PAGES = {
   budgets:      Budgets,
   analytics:    Analytics,
   accounts:     Accounts,
+  goals:        Goals,
   settings:     Settings,
 }
 

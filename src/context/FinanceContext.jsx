@@ -31,15 +31,25 @@ export function FinanceProvider({ children, userEmail }) {
     catch { return CATEGORIES }
   })
 
+  const [goals, setGoals] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(k('goals'))) || [] }
+    catch { return [] }
+  })
+
   // ── Persistence ──────────────────────────────────────────────────────────
   useEffect(() => { localStorage.setItem(k('accounts'),     JSON.stringify(accounts))     }, [accounts])
   useEffect(() => { localStorage.setItem(k('transactions'), JSON.stringify(transactions)) }, [transactions])
   useEffect(() => { localStorage.setItem(k('budgets'),      JSON.stringify(budgets))      }, [budgets])
   useEffect(() => { localStorage.setItem(k('categories'),   JSON.stringify(categories))   }, [categories])
+  useEffect(() => { localStorage.setItem(k('goals'),        JSON.stringify(goals))        }, [goals])
 
   // ── Mutations ────────────────────────────────────────────────────────────
   const addTransaction    = (tx) => setTransactions(prev => [{ ...tx, id: `t_${Date.now()}` }, ...prev])
   const deleteTransaction = (id) => setTransactions(prev => prev.filter(t => t.id !== id))
+
+  const addGoal    = (goal)       => setGoals(prev => [...prev, { ...goal, id: `goal_${Date.now()}`, createdAt: new Date().toISOString() }])
+  const updateGoal = (id, changes) => setGoals(prev => prev.map(g => g.id === id ? { ...g, ...changes } : g))
+  const deleteGoal = (id)          => setGoals(prev => prev.filter(g => g.id !== id))
 
   const addCategory    = (cat) => setCategories(prev => [...prev, { ...cat, id: `cat_${Date.now()}`, custom: true }])
   const deleteCategory = (id)  => setCategories(prev => prev.filter(c => c.id !== id))
@@ -228,6 +238,10 @@ export function FinanceProvider({ children, userEmail }) {
       transactions,
       budgets: budgetsWithSpent,
       categories,
+      goals,
+      addGoal,
+      updateGoal,
+      deleteGoal,
       isDemo,
       totalBalance,
       currentMonthIncome,

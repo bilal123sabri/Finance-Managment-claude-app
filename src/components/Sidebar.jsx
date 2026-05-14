@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import {
   ChartPie, ArrowsLeftRight, Wallet, ChartLineUp,
-  CreditCard, Gear, SignOut,
+  CreditCard, Gear, SignOut, Flag,
 } from '@phosphor-icons/react'
 import { useFinance } from '../context/FinanceContext'
 
@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { id: 'dashboard',    label: 'Dashboard',    Icon: ChartPie },
   { id: 'transactions', label: 'Transactions', Icon: ArrowsLeftRight },
   { id: 'budgets',      label: 'Budgets',      Icon: Wallet },
+  { id: 'goals',        label: 'Goals',        Icon: Flag },
   { id: 'analytics',   label: 'Analytics',    Icon: ChartLineUp },
   { id: 'accounts',    label: 'Accounts',     Icon: CreditCard },
 ]
