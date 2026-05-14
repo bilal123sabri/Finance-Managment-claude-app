@@ -4,15 +4,19 @@ import { MagnifyingGlass, Bell, Plus, Warning, CheckCircle, X } from '@phosphor-
 import { useFinance } from '../context/FinanceContext'
 
 const PAGE_META = {
-  dashboard:    { title: 'Dashboard',    subtitle: 'Good morning, Bilal' },
+  dashboard:    { title: 'Dashboard',    subtitle: 'Your financial overview' },
   transactions: { title: 'Transactions', subtitle: 'Your complete money history' },
   budgets:      { title: 'Budgets',      subtitle: 'Monthly spending limits' },
+  goals:        { title: 'Goals',        subtitle: 'Track your milestones' },
   analytics:    { title: 'Analytics',    subtitle: 'Patterns and insights' },
   accounts:     { title: 'Accounts',     subtitle: 'Your financial accounts' },
+  settings:     { title: 'Settings',     subtitle: 'Manage your preferences' },
 }
 
 export default function TopBar({ activePage, globalSearch, onSearch, onAddTransaction }) {
-  const { budgetAlerts } = useFinance()
+  const { budgetAlerts, formatCurrency, appSettings } = useFinance()
+  const userName = appSettings?.name || ''
+  const initials = userName ? userName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : 'U'
   const { title, subtitle } = PAGE_META[activePage] || PAGE_META.dashboard
   const [showBell, setShowBell]     = useState(false)
   const [searchFocused, setSearchFocused] = useState(false)
@@ -102,8 +106,8 @@ export default function TopBar({ activePage, globalSearch, onSearch, onAddTransa
                           <p className="text-zinc-200 text-xs font-medium">{alert.label}</p>
                           <p className={`text-xs mt-0.5 ${alert.over ? 'text-red-400' : 'text-amber-400'}`}>
                             {alert.over
-                              ? `$${(alert.spent - alert.limit).toFixed(2)} over budget`
-                              : `${alert.pct}% used — $${(alert.limit - alert.spent).toFixed(2)} left`}
+                              ? `${formatCurrency(alert.spent - alert.limit)} over budget`
+                              : `${alert.pct}% used — ${formatCurrency(alert.limit - alert.spent)} left`}
                           </p>
                           <div className="mt-1.5 h-1 bg-zinc-800 rounded-full overflow-hidden">
                             <div
@@ -135,8 +139,8 @@ export default function TopBar({ activePage, globalSearch, onSearch, onAddTransa
         </motion.button>
 
         {/* Avatar */}
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-zinc-950 font-bold text-sm cursor-pointer select-none">
-          B
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-zinc-950 font-bold text-xs cursor-pointer select-none">
+          {initials}
         </div>
       </div>
     </header>

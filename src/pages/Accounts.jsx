@@ -14,7 +14,7 @@ const TYPE_ICONS  = { checking: Bank, savings: PiggyBank, investment: ChartLineU
 const TYPE_LABELS = { checking: 'Checking', savings: 'Savings', investment: 'Investment' }
 
 export default function Accounts() {
-  const { accounts, transactions, totalBalance, netWorthChange, netWorthChangePct } = useFinance()
+  const { accounts, transactions, totalBalance, netWorthChange, netWorthChangePct, formatCurrency } = useFinance()
 
   const now      = new Date()
   const thisMonth = now.getMonth()
@@ -49,14 +49,14 @@ export default function Accounts() {
           <div>
             <p className="text-zinc-500 text-xs font-medium uppercase tracking-widest mb-2">Total Net Worth</p>
             <p className="text-zinc-100 text-4xl font-semibold font-mono tracking-tight">
-              ${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              {formatCurrency(totalBalance)}
             </p>
           </div>
           <div className="text-right">
             <div className={`flex items-center gap-1.5 ${isPositiveNW ? 'text-emerald-400' : 'text-red-400'}`}>
               {isPositiveNW ? <TrendUp size={16} weight="bold" /> : <TrendDown size={16} weight="bold" />}
               <span className="text-sm font-semibold font-mono">
-                {isPositiveNW ? '+' : '-'}${Math.abs(netWorthChange).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                {isPositiveNW ? '+' : '-'}{formatCurrency(Math.abs(netWorthChange))}
               </span>
             </div>
             <p className="text-zinc-600 text-xs mt-0.5">
@@ -89,7 +89,7 @@ export default function Accounts() {
                   <p className="text-zinc-500 text-xs capitalize">{acc.type}</p>
                 </div>
                 <p className="text-zinc-100 text-base font-semibold font-mono tracking-tight">
-                  ${acc.balance.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                  {formatCurrency(acc.balance, 0, 0)}
                 </p>
                 <p className="text-zinc-600 text-xs mt-0.5">
                   {((acc.balance / totalBalance) * 100).toFixed(1)}% of total
@@ -125,11 +125,11 @@ export default function Accounts() {
                 <p className="text-zinc-500 text-xs font-medium capitalize mb-0.5">{TYPE_LABELS[acc.type] || acc.type}</p>
                 <p className="text-zinc-300 text-sm leading-tight">{acc.name}</p>
                 <p className="text-zinc-100 text-2xl font-semibold font-mono tracking-tight mt-2">
-                  ${acc.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  {formatCurrency(acc.balance)}
                 </p>
                 <div className={`flex items-center gap-1 mt-1.5 text-xs font-medium ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
                   {isPositive ? <TrendUp size={12} weight="bold" /> : <TrendDown size={12} weight="bold" />}
-                  {isPositive ? '+' : '-'}${Math.abs(acc.monthlyChange).toFixed(2)} this month
+                  {isPositive ? '+' : '-'}{formatCurrency(Math.abs(acc.monthlyChange))} this month
                 </div>
               </div>
 
@@ -142,7 +142,7 @@ export default function Accounts() {
                       <div key={tx.id} className="flex items-center justify-between">
                         <span className="text-zinc-500 text-xs truncate flex-1 pr-2">{tx.description}</span>
                         <span className={`text-xs font-mono flex-shrink-0 ${tx.amount > 0 ? 'text-emerald-400' : 'text-zinc-400'}`}>
-                          {tx.amount > 0 ? '+' : '-'}${Math.abs(tx.amount).toFixed(0)}
+                          {tx.amount > 0 ? '+' : '-'}{formatCurrency(Math.abs(tx.amount), 0, 0)}
                         </span>
                       </div>
                     ))}

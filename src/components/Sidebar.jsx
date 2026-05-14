@@ -15,7 +15,7 @@ const NAV_ITEMS = [
 ]
 
 export default function Sidebar({ activePage, onNavigate, onLogout }) {
-  const { totalBalance, netWorthChange, netWorthChangePct } = useFinance()
+  const { totalBalance, netWorthChange, netWorthChangePct, formatCurrency } = useFinance()
 
   const isPositiveChange = netWorthChange >= 0
   const changePctSign = isPositiveChange ? '+' : '-'
@@ -39,7 +39,7 @@ export default function Sidebar({ activePage, onNavigate, onLogout }) {
       <div className="mx-4 mt-4 p-4 rounded-xl bg-zinc-800/40 border border-zinc-700/40">
         <p className="text-zinc-500 text-[10px] uppercase tracking-widest font-medium">Net Worth</p>
         <p className="text-zinc-100 text-xl font-semibold font-mono mt-1 tracking-tight">
-          ${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          {formatCurrency(totalBalance)}
         </p>
         <div className="flex items-center gap-1.5 mt-1.5">
           <span className={`w-1.5 h-1.5 rounded-full ${isPositiveChange ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
@@ -48,7 +48,7 @@ export default function Sidebar({ activePage, onNavigate, onLogout }) {
           </span>
         </div>
         <p className={`text-xs font-mono mt-0.5 ${isPositiveChange ? 'text-zinc-500' : 'text-red-400/60'}`}>
-          {isPositiveChange ? '+' : '-'}${Math.abs(netWorthChange).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+          {isPositiveChange ? '+' : '-'}{formatCurrency(Math.abs(netWorthChange))}
         </p>
       </div>
 

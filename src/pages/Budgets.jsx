@@ -9,7 +9,7 @@ const fadeUp = {
 }
 
 export default function Budgets() {
-  const { budgets } = useFinance()
+  const { budgets, formatCurrency } = useFinance()
 
   const totalBudget = budgets.reduce((s, b) => s + b.limit, 0)
   const totalSpent  = budgets.reduce((s, b) => s + b.spent, 0)
@@ -24,7 +24,7 @@ export default function Budgets() {
         <motion.div variants={fadeUp} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
           <p className="text-zinc-500 text-xs font-medium mb-2">Total Budgeted</p>
           <p className="text-zinc-100 text-2xl font-semibold font-mono tracking-tight">
-            ${totalBudget.toLocaleString()}
+            {formatCurrency(totalBudget, 0, 0)}
           </p>
           <p className="text-zinc-600 text-xs mt-1">this month</p>
         </motion.div>
@@ -32,12 +32,12 @@ export default function Budgets() {
         <motion.div variants={fadeUp} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
           <p className="text-zinc-500 text-xs font-medium mb-2">Total Spent</p>
           <p className="text-zinc-100 text-2xl font-semibold font-mono tracking-tight">
-            ${totalSpent.toFixed(0)}
+            {formatCurrency(totalSpent, 0, 0)}
           </p>
           <p className={`text-xs mt-1 font-medium ${remaining < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
             {remaining < 0
-              ? `$${Math.abs(remaining).toFixed(0)} over total`
-              : `$${remaining.toFixed(0)} remaining`}
+              ? `${formatCurrency(Math.abs(remaining), 0, 0)} over total`
+              : `${formatCurrency(remaining, 0, 0)} remaining`}
           </p>
         </motion.div>
 
@@ -106,8 +106,8 @@ export default function Budgets() {
                 </div>
 
                 <div className="text-right">
-                  <p className="text-zinc-100 text-sm font-mono font-semibold">${bud.spent.toFixed(2)}</p>
-                  <p className="text-zinc-600 text-xs font-mono">of ${bud.limit.toLocaleString()}</p>
+                  <p className="text-zinc-100 text-sm font-mono font-semibold">{formatCurrency(bud.spent)}</p>
+                  <p className="text-zinc-600 text-xs font-mono">of {formatCurrency(bud.limit, 0, 0)}</p>
                 </div>
               </div>
 
@@ -124,7 +124,7 @@ export default function Budgets() {
               <div className="flex items-center justify-between mt-2">
                 <p className="text-zinc-600 text-xs">{pct.toFixed(0)}% used</p>
                 <p className={`text-xs font-mono font-medium ${over ? 'text-red-400' : 'text-zinc-500'}`}>
-                  {over ? `$${Math.abs(leftover).toFixed(2)} over` : `$${leftover.toFixed(2)} left`}
+                  {over ? `${formatCurrency(Math.abs(leftover))} over` : `${formatCurrency(leftover)} left`}
                 </p>
               </div>
             </motion.div>

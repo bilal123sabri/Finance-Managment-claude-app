@@ -246,18 +246,16 @@ function CategoryManager() {
 }
 
 export default function Settings() {
-  const { resetData } = useFinance()
+  const { resetData, appSettings, updateSettings } = useFinance()
 
-  const [settings, setSettings] = useState(() => {
-    try {
-      const authUser = getAuthUser()
-      const stored   = localStorage.getItem(STORAGE_KEY)
-      const base     = { ...DEFAULT_SETTINGS, name: authUser.name, email: authUser.email }
-      return stored ? { ...base, ...JSON.parse(stored) } : base
-    } catch {
-      return DEFAULT_SETTINGS
-    }
-  })
+  const authUser = getAuthUser()
+
+  const [settings, setSettings] = useState(() => ({
+    ...DEFAULT_SETTINGS,
+    name:  authUser.name  || '',
+    email: authUser.email || '',
+    ...appSettings,
+  }))
 
   const [saved, setSaved] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
@@ -265,8 +263,9 @@ export default function Settings() {
   const set = (key, val) => setSettings(prev => ({ ...prev, [key]: val }))
 
   const handleSave = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
-    // Keep ff_auth user info in sync
+    // Push ALL settings into context (triggers re-render of all consumers instantly)
+    updateSettings(settings)
+    // Keep ff_auth name/email in sync
     const auth = getAuthUser()
     localStorage.setItem('ff_auth', JSON.stringify({ ...auth, name: settings.name, email: settings.email }))
     setSaved(true)

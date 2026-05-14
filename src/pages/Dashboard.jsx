@@ -13,14 +13,14 @@ const fadeUp = {
   animate: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 120, damping: 20 } },
 }
 
-function ChartTooltip({ active, payload, label }) {
+function ChartTooltip({ active, payload, label, fc }) {
   if (!active || !payload?.length) return null
   return (
     <div className="bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2.5 shadow-xl text-xs">
       <p className="text-zinc-500 mb-1.5">{label}</p>
       {payload.map((p, i) => (
         <p key={i} className="font-mono font-medium" style={{ color: p.color }}>
-          {p.name}: ${p.value?.toLocaleString()}
+          {p.name}: {fc ? fc(p.value ?? 0) : p.value}
         </p>
       ))}
     </div>
@@ -80,6 +80,8 @@ export default function Dashboard({ onNavigate }) {
     categorySpending,
     budgets,
     monthlyChartData,
+    formatCurrency,
+    formatCurrencyCompact,
   } = useFinance()
 
   const isEmpty   = transactions.length === 0
@@ -125,9 +127,9 @@ export default function Dashboard({ onNavigate }) {
 
       {/* 4 Stat Cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard label="Monthly Income"   value={`$${currentMonthIncome.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}   changePct={incomeChangePct}    positiveIsGood={true}  Icon={ArrowUpRight} />
-        <StatCard label="Monthly Expenses" value={`$${currentMonthExpenses.toLocaleString('en-US', { minimumFractionDigits: 2 })}`} changePct={expenseChangePct}   positiveIsGood={false} Icon={ArrowDownRight} />
-        <StatCard label="Net Saved"        value={`$${netSaved.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}             changePct={netSavedChangePct}  positiveIsGood={true}  Icon={TrendUp} />
+        <StatCard label="Monthly Income"   value={formatCurrency(currentMonthIncome)}   changePct={incomeChangePct}    positiveIsGood={true}  Icon={ArrowUpRight} />
+        <StatCard label="Monthly Expenses" value={formatCurrency(currentMonthExpenses)} changePct={expenseChangePct}   positiveIsGood={false} Icon={ArrowDownRight} />
+        <StatCard label="Net Saved"        value={formatCurrency(netSaved)}             changePct={netSavedChangePct}  positiveIsGood={true}  Icon={TrendUp} />
         <StatCard label="Savings Rate"     value={`${savingsRate}%`}                                                                changePct={srChangePct}        positiveIsGood={true}  Icon={Percent} />
       </div>
 
@@ -160,8 +162,8 @@ export default function Dashboard({ onNavigate }) {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
                 <XAxis dataKey="month" tick={{ fill: '#71717a', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#71717a', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v / 1000}k`} />
-                <Tooltip content={<ChartTooltip />} />
+                <YAxis tick={{ fill: '#71717a', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => formatCurrencyCompact(v)} />
+                <Tooltip content={<ChartTooltip fc={formatCurrency} />} />
                 <Area type="monotone" dataKey="income"   name="Income"   stroke="#10b981" strokeWidth={2} fill="url(#gIncome)" />
                 <Area type="monotone" dataKey="expenses" name="Expenses" stroke="#f87171" strokeWidth={2} fill="url(#gExpense)" />
               </AreaChart>
@@ -188,7 +190,7 @@ export default function Dashboard({ onNavigate }) {
                   <Pie data={categorySpending} dataKey="spent" nameKey="label" cx="50%" cy="50%" innerRadius={38} outerRadius={58} paddingAngle={2} strokeWidth={0}>
                     {categorySpending.map((e, i) => <Cell key={i} fill={e.color} />)}
                   </Pie>
-                  <Tooltip formatter={(v) => [`$${v.toFixed(2)}`, '']} contentStyle={{ background: '#18181b', border: '1px solid #27272a', borderRadius: 12, fontSize: 12 }} />
+                  <Tooltip formatter={(v) => [formatCurrency(v), '']} contentStyle={{ background: '#18181b', border: '1px solid #27272a', borderRadius: 12, fontSize: 12 }} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="space-y-2 mt-3">
@@ -196,7 +198,7 @@ export default function Dashboard({ onNavigate }) {
                   <div key={i} className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: cat.color }} />
                     <span className="text-zinc-400 text-xs flex-1 truncate">{cat.label}</span>
-                    <span className="text-zinc-300 text-xs font-mono">${cat.spent.toFixed(0)}</span>
+                    <span className="text-zinc-300 text-xs font-mono">{formatCurrency(cat.spent, 0, 0)}</span>
                   </div>
                 ))}
               </div>
@@ -242,7 +244,7 @@ export default function Dashboard({ onNavigate }) {
                   <p className="text-zinc-600 text-xs">{format(parseISO(tx.date), 'MMM d, yyyy')}</p>
                 </div>
                 <span className={`font-mono text-sm font-semibold flex-shrink-0 ${isIncome ? 'text-emerald-400' : 'text-zinc-300'}`}>
-                  {isIncome ? '+' : '-'}${Math.abs(tx.amount).toFixed(2)}
+                  {isIncome ? '+' : '-'}{formatCurrency(Math.abs(tx.amount))}
                 </span>
               </div>
             )
@@ -273,7 +275,7 @@ export default function Dashboard({ onNavigate }) {
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-zinc-400 text-xs">{bud.label}</span>
                       <span className={`text-xs font-mono ${over ? 'text-red-400' : 'text-zinc-500'}`}>
-                        ${bud.spent.toFixed(0)} / ${bud.limit}
+                        {formatCurrency(bud.spent, 0, 0)} / {formatCurrency(bud.limit, 0, 0)}
                       </span>
                     </div>
                     <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">

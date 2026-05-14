@@ -52,10 +52,6 @@ const STATUS_CONFIG = {
   overdue:    { label: 'Overdue',  color: 'text-red-400',     bg: 'bg-red-500/10',     Icon: Clock         },
 }
 
-function fmt(n) {
-  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
 // ─── Empty field default ───────────────────────────────────────────────────
 const EMPTY_FORM = {
   title: '', description: '', type: 'savings',
@@ -220,6 +216,7 @@ function ContributeModal({ goal, onContribute, onClose }) {
   const [error, setError]   = useState('')
   const remaining = Math.max(goal.targetAmount - goal.currentAmount, 0)
   const typeInfo  = GOAL_TYPE_MAP[goal.type]
+  const { formatCurrency } = useFinance()
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -256,7 +253,7 @@ function ContributeModal({ goal, onContribute, onClose }) {
             <div>
               <p className="text-zinc-500 text-xs mb-3">
                 <span className="text-zinc-300 font-medium">{goal.title}</span>
-                {' '}· ${fmt(remaining)} remaining
+                {' '}· {formatCurrency(remaining)} remaining
               </p>
               <label className="text-zinc-400 text-xs font-medium block mb-1.5">Amount to add</label>
               <div className="relative">
@@ -297,6 +294,7 @@ function ContributeModal({ goal, onContribute, onClose }) {
 // ─── Goal Card ─────────────────────────────────────────────────────────────
 function GoalCard({ goal, onEdit, onDelete, onContribute }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const { formatCurrency } = useFinance()
   const typeInfo  = GOAL_TYPE_MAP[goal.type] || GOAL_TYPE_MAP.other
   const status    = getStatus(goal)
   const statusCfg = STATUS_CONFIG[status]
@@ -385,7 +383,7 @@ function GoalCard({ goal, onEdit, onDelete, onContribute }) {
           </div>
           <div className="flex items-center justify-between mt-1.5">
             <span className="text-zinc-600 text-[10px]">{pct.toFixed(1)}% complete</span>
-            <span className="text-zinc-600 text-[10px] font-mono">${fmt(remaining)} to go</span>
+            <span className="text-zinc-600 text-[10px] font-mono">{formatCurrency(remaining)} to go</span>
           </div>
         </div>
 
@@ -394,13 +392,13 @@ function GoalCard({ goal, onEdit, onDelete, onContribute }) {
           <div>
             <p className="text-zinc-500 text-[10px] uppercase tracking-wide mb-0.5">Saved</p>
             <p className="text-zinc-100 text-xl font-semibold font-mono tracking-tight">
-              ${fmt(goal.currentAmount)}
+              {formatCurrency(goal.currentAmount)}
             </p>
           </div>
           <div className="text-right">
             <p className="text-zinc-500 text-[10px] uppercase tracking-wide mb-0.5">Target</p>
             <p className="text-zinc-400 text-xl font-semibold font-mono tracking-tight">
-              ${fmt(goal.targetAmount)}
+              {formatCurrency(goal.targetAmount)}
             </p>
           </div>
         </div>
@@ -442,7 +440,7 @@ function GoalCard({ goal, onEdit, onDelete, onContribute }) {
 
 // ─── Main Page ─────────────────────────────────────────────────────────────
 export default function Goals() {
-  const { goals, addGoal, updateGoal, deleteGoal } = useFinance()
+  const { goals, addGoal, updateGoal, deleteGoal, formatCurrency } = useFinance()
 
   const [showAdd,        setShowAdd]        = useState(false)
   const [editingGoal,    setEditingGoal]    = useState(null)
@@ -501,8 +499,8 @@ export default function Goals() {
           {[
             { label: 'Total Goals',  value: allGoals.length,         suffix: '',   color: 'text-zinc-100', Icon: Target    },
             { label: 'Completed',    value: completed.length,        suffix: '',   color: 'text-emerald-400', Icon: Trophy },
-            { label: 'Total Saved',  value: `$${fmt(totalSaved)}`,   suffix: null, color: 'text-zinc-100', Icon: PiggyBank },
-            { label: 'Total Target', value: `$${fmt(totalTarget)}`,  suffix: null, color: 'text-zinc-100', Icon: Flag      },
+            { label: 'Total Saved',  value: formatCurrency(totalSaved),   suffix: null, color: 'text-zinc-100', Icon: PiggyBank },
+            { label: 'Total Target', value: formatCurrency(totalTarget),  suffix: null, color: 'text-zinc-100', Icon: Flag      },
           ].map(({ label, value, color, Icon: Ic }) => (
             <div key={label} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
               <div className="flex items-start justify-between mb-3">
@@ -533,8 +531,8 @@ export default function Goals() {
             />
           </div>
           <div className="flex items-center justify-between mt-2">
-            <p className="text-zinc-600 text-xs font-mono">${fmt(totalSaved)} saved</p>
-            <p className="text-zinc-600 text-xs font-mono">${fmt(totalTarget)} target</p>
+            <p className="text-zinc-600 text-xs font-mono">{formatCurrency(totalSaved)} saved</p>
+            <p className="text-zinc-600 text-xs font-mono">{formatCurrency(totalTarget)} target</p>
           </div>
         </motion.div>
       )}

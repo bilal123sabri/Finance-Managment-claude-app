@@ -36,12 +36,20 @@ export function FinanceProvider({ children, userEmail }) {
     catch { return [] }
   })
 
+  const [appSettings, setAppSettings] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(k('settings'))) || {} }
+    catch { return {} }
+  })
+
   // ── Persistence ──────────────────────────────────────────────────────────
   useEffect(() => { localStorage.setItem(k('accounts'),     JSON.stringify(accounts))     }, [accounts])
   useEffect(() => { localStorage.setItem(k('transactions'), JSON.stringify(transactions)) }, [transactions])
   useEffect(() => { localStorage.setItem(k('budgets'),      JSON.stringify(budgets))      }, [budgets])
   useEffect(() => { localStorage.setItem(k('categories'),   JSON.stringify(categories))   }, [categories])
   useEffect(() => { localStorage.setItem(k('goals'),        JSON.stringify(goals))        }, [goals])
+  useEffect(() => { localStorage.setItem(k('settings'),     JSON.stringify(appSettings))  }, [appSettings])
+
+  const updateSettings = (changes) => setAppSettings(prev => ({ ...prev, ...changes }))
 
   // ── Mutations ────────────────────────────────────────────────────────────
   const addTransaction    = (tx) => setTransactions(prev => [{ ...tx, id: `t_${Date.now()}` }, ...prev])
@@ -232,6 +240,35 @@ export function FinanceProvider({ children, userEmail }) {
     [budgetsWithSpent]
   )
 
+  // ── Currency formatting ───────────────────────────────────────────────────
+  const currency = appSettings.currency || 'USD'
+
+  const CURRENCY_LOCALES = {
+    USD: 'en-US', EUR: 'de-DE', GBP: 'en-GB',
+    PKR: 'ur-PK', CAD: 'en-CA', AUD: 'en-AU',
+  }
+
+  const formatCurrency = useMemo(() => (amount, minDec = 2, maxDec = 2) => {
+    try {
+      return new Intl.NumberFormat(CURRENCY_LOCALES[currency] || 'en-US', {
+        style: 'currency',
+        currency,
+        minimumFractionDigits: minDec,
+        maximumFractionDigits: maxDec,
+      }).format(amount)
+    } catch {
+      return `$${Math.abs(amount).toFixed(minDec)}`
+    }
+  }, [currency])
+
+  // Compact formatter for chart axes (e.g. $4.2k)
+  const formatCurrencyCompact = useMemo(() => (amount) => {
+    const abs = Math.abs(amount)
+    if (abs >= 1000000) return formatCurrency(amount / 1000000, 1, 1) + 'M'
+    if (abs >= 1000)    return formatCurrency(amount / 1000,    1, 1) + 'k'
+    return formatCurrency(amount, 0, 0)
+  }, [formatCurrency])
+
   return (
     <FinanceContext.Provider value={{
       accounts,
@@ -257,6 +294,11 @@ export function FinanceProvider({ children, userEmail }) {
       monthlyChartData,
       categorySpending,
       budgetAlerts,
+      appSettings,
+      updateSettings,
+      currency,
+      formatCurrency,
+      formatCurrencyCompact,
       addTransaction,
       deleteTransaction,
       addCategory,

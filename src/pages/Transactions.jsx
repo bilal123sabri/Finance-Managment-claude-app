@@ -11,7 +11,7 @@ const fadeUp = {
 }
 
 export default function Transactions({ globalSearch = '' }) {
-  const { transactions, deleteTransaction, categories } = useFinance()
+  const { transactions, deleteTransaction, categories, formatCurrency } = useFinance()
 
   const [typeFilter, setTypeFilter] = useState('all')
   const [catFilter,  setCatFilter]  = useState('all')
@@ -65,7 +65,7 @@ export default function Transactions({ globalSearch = '' }) {
           <div key={label} className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3">
             <p className="text-zinc-500 text-xs font-medium mb-1">{label}</p>
             <p className={`text-lg font-semibold font-mono tracking-tight ${color}`}>
-              {val < 0 ? '-' : val > 0 && label === 'Net' ? '+' : ''}${Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              {val < 0 ? '-' : val > 0 && label === 'Net' ? '+' : ''}{formatCurrency(Math.abs(val))}
             </p>
           </div>
         ))}
@@ -141,7 +141,7 @@ export default function Transactions({ globalSearch = '' }) {
               <div className="flex-1 h-px bg-zinc-800" />
               <p className="text-zinc-700 text-[10px] font-mono">
                 {txs.reduce((s, t) => s + t.amount, 0) >= 0 ? '+' : ''}
-                ${txs.reduce((s, t) => s + t.amount, 0).toFixed(2)}
+                {formatCurrency(txs.reduce((s, t) => s + t.amount, 0))}
               </p>
             </div>
 
@@ -182,7 +182,7 @@ export default function Transactions({ globalSearch = '' }) {
 
                       <div className="flex items-center gap-3 flex-shrink-0">
                         <span className={`font-mono text-sm font-semibold ${isIncome ? 'text-emerald-400' : 'text-zinc-200'}`}>
-                          {isIncome ? '+' : '-'}${Math.abs(tx.amount).toFixed(2)}
+                          {isIncome ? '+' : '-'}{formatCurrency(Math.abs(tx.amount))}
                         </span>
                         <button
                           onClick={() => deleteTransaction(tx.id)}

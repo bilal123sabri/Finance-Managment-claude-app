@@ -12,14 +12,14 @@ const fadeUp = {
   animate: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 120, damping: 20 } },
 }
 
-function ChartTooltip({ active, payload, label }) {
+function ChartTooltip({ active, payload, label, fc }) {
   if (!active || !payload?.length) return null
   return (
     <div className="bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2.5 shadow-xl text-xs">
       <p className="text-zinc-500 mb-1.5">{label}</p>
       {payload.map((p, i) => (
         <p key={i} className="font-mono font-medium" style={{ color: p.color }}>
-          {p.name}: ${p.value?.toLocaleString()}
+          {p.name}: {fc ? fc(p.value ?? 0) : p.value}
         </p>
       ))}
     </div>
@@ -39,7 +39,7 @@ function EmptyChart({ icon: Icon, message, sub, height = 210 }) {
 }
 
 export default function Analytics() {
-  const { categorySpending, currentMonthIncome, currentMonthExpenses, savingsRate, monthlyChartData } = useFinance()
+  const { categorySpending, currentMonthIncome, currentMonthExpenses, savingsRate, monthlyChartData, formatCurrency, formatCurrencyCompact } = useFinance()
 
   const hasMonthlyData  = monthlyChartData.some(d => d.income > 0 || d.expenses > 0)
   const hasNetData      = monthlyChartData.some(d => d.net !== 0)
@@ -63,8 +63,8 @@ export default function Analytics() {
               <BarChart data={monthlyChartData} barGap={4} margin={{ top: 0, right: 4, bottom: 0, left: -12 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
                 <XAxis dataKey="month" tick={{ fill: '#71717a', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#71717a', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v / 1000}k`} />
-                <Tooltip content={<ChartTooltip />} />
+                <YAxis tick={{ fill: '#71717a', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => formatCurrencyCompact(v)} />
+                <Tooltip content={<ChartTooltip fc={formatCurrency} />} />
                 <Bar dataKey="income"   name="Income"   fill="#10b981" fillOpacity={0.85} radius={[4, 4, 0, 0]} />
                 <Bar dataKey="expenses" name="Expenses" fill="#f87171" fillOpacity={0.75} radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -83,8 +83,8 @@ export default function Analytics() {
               <LineChart data={monthlyChartData} margin={{ top: 0, right: 4, bottom: 0, left: -12 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
                 <XAxis dataKey="month" tick={{ fill: '#71717a', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#71717a', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v / 1000}k`} />
-                <Tooltip content={<ChartTooltip />} />
+                <YAxis tick={{ fill: '#71717a', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => formatCurrencyCompact(v)} />
+                <Tooltip content={<ChartTooltip fc={formatCurrency} />} />
                 <Line type="monotone" dataKey="net" name="Net Saved" stroke="#10b981" strokeWidth={2.5}
                   dot={{ fill: '#10b981', strokeWidth: 0, r: 4 }}
                   activeDot={{ r: 6, fill: '#34d399' }} />
@@ -105,9 +105,9 @@ export default function Analytics() {
             <ResponsiveContainer width="100%" height={Math.max(categorySpending.length * 36, 160)}>
               <BarChart data={categorySpending} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={false} />
-                <XAxis type="number" tick={{ fill: '#71717a', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}`} />
+                <XAxis type="number" tick={{ fill: '#71717a', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => formatCurrency(v, 0, 0)} />
                 <YAxis type="category" dataKey="label" tick={{ fill: '#71717a', fontSize: 11 }} axisLine={false} tickLine={false} width={88} />
-                <Tooltip content={<ChartTooltip />} />
+                <Tooltip content={<ChartTooltip fc={formatCurrency} />} />
                 <Bar dataKey="spent" name="Spent" radius={[0, 4, 4, 0]}>
                   {categorySpending.map((e, i) => <Cell key={i} fill={e.color} fillOpacity={0.85} />)}
                 </Bar>
@@ -122,7 +122,7 @@ export default function Analytics() {
                       <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: cat.color }} />
                       <span className="text-zinc-300 text-sm flex-1">{cat.label}</span>
                       <span className="text-zinc-500 text-xs font-mono">{pct}%</span>
-                      <span className="text-zinc-200 text-sm font-mono font-medium w-20 text-right">${cat.spent.toFixed(2)}</span>
+                      <span className="text-zinc-200 text-sm font-mono font-medium w-20 text-right">{formatCurrency(cat.spent)}</span>
                     </div>
                     <div className="h-1 bg-zinc-800 rounded-full ml-5 overflow-hidden">
                       <motion.div
