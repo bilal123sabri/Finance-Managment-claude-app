@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { ArrowUpRight, ArrowDownRight, TrendUp, Percent } from '@phosphor-icons/react'
+import { ArrowUpRight, ArrowDownRight, TrendUp, Percent, Plus, Wallet, ChartBar } from '@phosphor-icons/react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell,
@@ -59,6 +59,14 @@ function StatCard({ label, value, changePct, positiveIsGood, Icon }) {
   )
 }
 
+function getAuthName() {
+  try {
+    const raw = localStorage.getItem('ff_auth')
+    const parsed = JSON.parse(raw)
+    return parsed?.name?.split(' ')[0] || 'there'
+  } catch { return 'there' }
+}
+
 export default function Dashboard({ onNavigate }) {
   const {
     transactions,
@@ -73,6 +81,8 @@ export default function Dashboard({ onNavigate }) {
     budgets,
   } = useFinance()
 
+  const isEmpty = transactions.length === 0
+
   const prevSavingsRate = MONTHLY_DATA[MONTHLY_DATA.length - 2]
   const prevSR = prevSavingsRate
     ? (((prevSavingsRate.income - prevSavingsRate.expenses) / prevSavingsRate.income) * 100).toFixed(1)
@@ -85,6 +95,70 @@ export default function Dashboard({ onNavigate }) {
 
   return (
     <motion.div variants={stagger} initial="initial" animate="animate" className="space-y-5">
+
+      {/* Welcome banner — only shown when user has no data yet */}
+      {isEmpty && (
+        <motion.div
+          variants={fadeUp}
+          className="bg-gradient-to-br from-emerald-500/10 to-zinc-900 border border-emerald-500/20 rounded-2xl p-6"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <p className="text-emerald-400 text-xs font-medium uppercase tracking-widest mb-1">Welcome to FinFlow</p>
+              <h2 className="text-zinc-100 text-xl font-semibold">Hey {getAuthName()}, let's get started 👋</h2>
+              <p className="text-zinc-500 text-sm mt-1.5 leading-relaxed">
+                Your dashboard is ready. Add your first transaction to start tracking your finances.
+              </p>
+            </div>
+          </div>
+
+          {/* Quick-start steps */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mt-5">
+            {[
+              {
+                step: '1',
+                title: 'Add a transaction',
+                desc: 'Record income or an expense to get started',
+                icon: Plus,
+                action: () => {},
+                cta: 'Use the + button in the top bar',
+              },
+              {
+                step: '2',
+                title: 'Set up budgets',
+                desc: 'Create spending limits by category',
+                icon: Wallet,
+                action: () => onNavigate('budgets'),
+                cta: 'Go to Budgets →',
+              },
+              {
+                step: '3',
+                title: 'View analytics',
+                desc: 'See charts and trends once you have data',
+                icon: ChartBar,
+                action: () => onNavigate('analytics'),
+                cta: 'Go to Analytics →',
+              },
+            ].map(({ step, title, desc, icon: Icon, action, cta }) => (
+              <div
+                key={step}
+                onClick={action}
+                className="bg-zinc-900/70 border border-zinc-800 hover:border-zinc-700 rounded-xl p-4 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="w-6 h-6 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-bold flex items-center justify-center flex-shrink-0">
+                    {step}
+                  </span>
+                  <Icon size={14} className="text-zinc-400" />
+                  <p className="text-zinc-200 text-sm font-medium">{title}</p>
+                </div>
+                <p className="text-zinc-600 text-xs leading-relaxed mb-2">{desc}</p>
+                <p className="text-emerald-400 text-xs font-medium">{cta}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {/* 4 Stat Cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">

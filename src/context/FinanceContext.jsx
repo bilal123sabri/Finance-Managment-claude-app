@@ -3,65 +3,76 @@ import { ACCOUNTS, TRANSACTIONS, BUDGETS, CATEGORIES, MONTHLY_DATA } from '../da
 
 const FinanceContext = createContext(null)
 
-export function FinanceProvider({ children }) {
-  const [accounts] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('ff_accounts')) || ACCOUNTS } catch { return ACCOUNTS }
+const DEMO_EMAIL = 'bilal@finflow.app'
+
+// Default accounts for new users — same structure but zero balances
+const EMPTY_ACCOUNTS = ACCOUNTS.map(a => ({ ...a, balance: 0 }))
+
+export function FinanceProvider({ children, userEmail }) {
+  const isDemo = userEmail === DEMO_EMAIL
+
+  // Per-user storage keys so each account has completely isolated data
+  const k = (name) => `ff_${name}__${userEmail}`
+
+  // ── State ────────────────────────────────────────────────────────────────
+  const [accounts, setAccounts] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(k('accounts'))) || (isDemo ? ACCOUNTS : EMPTY_ACCOUNTS)
+    } catch { return isDemo ? ACCOUNTS : EMPTY_ACCOUNTS }
   })
 
   const [transactions, setTransactions] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('ff_transactions')) || TRANSACTIONS } catch { return TRANSACTIONS }
+    try {
+      return JSON.parse(localStorage.getItem(k('transactions'))) || (isDemo ? TRANSACTIONS : [])
+    } catch { return isDemo ? TRANSACTIONS : [] }
   })
 
-  const [budgets] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('ff_budgets')) || BUDGETS } catch { return BUDGETS }
+  const [budgets, setBudgets] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(k('budgets'))) || (isDemo ? BUDGETS : [])
+    } catch { return isDemo ? BUDGETS : [] }
   })
 
   const [categories, setCategories] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('ff_categories')) || CATEGORIES } catch { return CATEGORIES }
+    try {
+      return JSON.parse(localStorage.getItem(k('categories'))) || CATEGORIES
+    } catch { return CATEGORIES }
   })
 
-  useEffect(() => {
-    localStorage.setItem('ff_transactions', JSON.stringify(transactions))
-  }, [transactions])
+  // ── Persistence ──────────────────────────────────────────────────────────
+  useEffect(() => { localStorage.setItem(k('accounts'),     JSON.stringify(accounts))     }, [accounts])
+  useEffect(() => { localStorage.setItem(k('transactions'), JSON.stringify(transactions)) }, [transactions])
+  useEffect(() => { localStorage.setItem(k('budgets'),      JSON.stringify(budgets))      }, [budgets])
+  useEffect(() => { localStorage.setItem(k('categories'),   JSON.stringify(categories))   }, [categories])
 
-  useEffect(() => {
-    localStorage.setItem('ff_categories', JSON.stringify(categories))
-  }, [categories])
+  // ── Mutations ────────────────────────────────────────────────────────────
+  const addTransaction    = (tx) => setTransactions(prev => [{ ...tx, id: `t_${Date.now()}` }, ...prev])
+  const deleteTransaction = (id) => setTransactions(prev => prev.filter(t => t.id !== id))
 
-  const addCategory = (cat) => {
-    const id = `cat_${Date.now()}`
-    setCategories(prev => [...prev, { ...cat, id, custom: true }])
-  }
-
-  const deleteCategory = (id) => {
-    setCategories(prev => prev.filter(c => c.id !== id))
-  }
-
-  const updateCategory = (id, changes) => {
-    setCategories(prev => prev.map(c => c.id === id ? { ...c, ...changes } : c))
-  }
-
-  const addTransaction = (tx) =>
-    setTransactions(prev => [{ ...tx, id: `t_${Date.now()}` }, ...prev])
-
-  const deleteTransaction = (id) =>
-    setTransactions(prev => prev.filter(t => t.id !== id))
+  const addCategory    = (cat) => setCategories(prev => [...prev, { ...cat, id: `cat_${Date.now()}`, custom: true }])
+  const deleteCategory = (id)  => setCategories(prev => prev.filter(c => c.id !== id))
+  const updateCategory = (id, changes) => setCategories(prev => prev.map(c => c.id === id ? { ...c, ...changes } : c))
 
   const resetData = () => {
-    localStorage.clear()
+    // Only wipe this user's keys
+    localStorage.removeItem(k('accounts'))
+    localStorage.removeItem(k('transactions'))
+    localStorage.removeItem(k('budgets'))
+    localStorage.removeItem(k('categories'))
+    localStorage.removeItem('ff_auth')
     window.location.reload()
   }
 
+  // ── Derived values ───────────────────────────────────────────────────────
   const totalBalance = useMemo(
     () => accounts.reduce((s, a) => s + a.balance, 0),
     [accounts]
   )
 
-  const now = new Date()
+  const now       = new Date()
   const thisMonth = now.getMonth()
-  const thisYear = now.getFullYear()
+  const thisYear  = now.getFullYear()
 
-  // Current month transactions
   const currentMonthTx = useMemo(() =>
     transactions.filter(t => {
       const d = new Date(t.date)
@@ -82,8 +93,7 @@ export function FinanceProvider({ children }) {
 
   const netSaved = currentMonthIncome - currentMonthExpenses
 
-  // Use MONTHLY_DATA for previous-month comparison (realistic historical reference)
-  const prevRef = MONTHLY_DATA[MONTHLY_DATA.length - 2] // April reference
+  const prevRef     = MONTHLY_DATA[MONTHLY_DATA.length - 2]
   const prevIncome   = prevRef?.income   ?? 0
   const prevExpenses = prevRef?.expenses ?? 0
   const prevNet      = prevIncome - prevExpenses
@@ -110,7 +120,6 @@ export function FinanceProvider({ children }) {
     [currentMonthIncome, currentMonthExpenses]
   )
 
-  // Net worth change this month (all transaction amounts summed)
   const netWorthChange = useMemo(() =>
     currentMonthTx.reduce((s, t) => s + t.amount, 0),
     [currentMonthTx]
@@ -122,7 +131,6 @@ export function FinanceProvider({ children }) {
     return (netWorthChange / prevBalance * 100).toFixed(1)
   }, [totalBalance, netWorthChange])
 
-  // Category spending this month
   const categorySpending = useMemo(() =>
     categories
       .filter(c => c.id !== 'income')
@@ -137,11 +145,10 @@ export function FinanceProvider({ children }) {
     [categories, currentMonthTx]
   )
 
-  // Budgets with real spent amounts
   const budgetsWithSpent = useMemo(() =>
     budgets.map(bud => {
       const catInfo = categories.find(c => c.id === bud.category)
-      const spent = currentMonthTx
+      const spent   = currentMonthTx
         .filter(t => t.category === bud.category && t.type === 'expense')
         .reduce((s, t) => s + Math.abs(t.amount), 0)
       return {
@@ -154,7 +161,6 @@ export function FinanceProvider({ children }) {
     [budgets, categories, currentMonthTx]
   )
 
-  // Budget alerts: categories at ≥80% of limit
   const budgetAlerts = useMemo(() =>
     budgetsWithSpent
       .filter(b => b.spent >= b.limit * 0.8)
@@ -169,9 +175,7 @@ export function FinanceProvider({ children }) {
       transactions,
       budgets: budgetsWithSpent,
       categories,
-      addCategory,
-      deleteCategory,
-      updateCategory,
+      isDemo,
       totalBalance,
       currentMonthIncome,
       currentMonthExpenses,
@@ -186,6 +190,9 @@ export function FinanceProvider({ children }) {
       budgetAlerts,
       addTransaction,
       deleteTransaction,
+      addCategory,
+      deleteCategory,
+      updateCategory,
       resetData,
     }}>
       {children}

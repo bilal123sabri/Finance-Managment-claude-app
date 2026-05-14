@@ -27,25 +27,29 @@ const pageTransition = {
   exit:     { opacity: 0, y: -8, transition: { duration: 0.14 } },
 }
 
-export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+function readAuthUser() {
+  try {
     const raw = localStorage.getItem('ff_auth')
-    if (!raw) return false
-    // Support both old '1' string and new JSON object format
-    try { return raw === '1' || !!JSON.parse(raw) } catch { return false }
-  })
-  const [activePage, setActivePage] = useState('dashboard')
-  const [showModal, setShowModal]   = useState(false)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return typeof parsed === 'object' && parsed?.email ? parsed : null
+  } catch { return null }
+}
+
+export default function App() {
+  const [authUser, setAuthUser] = useState(() => readAuthUser())
+  const [activePage, setActivePage]     = useState('dashboard')
+  const [showModal,  setShowModal]      = useState(false)
   const [globalSearch, setGlobalSearch] = useState('')
 
   const handleLogin = () => {
-    setIsAuthenticated(true)
+    setAuthUser(readAuthUser())
     setActivePage('dashboard')
   }
 
   const handleLogout = () => {
     localStorage.removeItem('ff_auth')
-    setIsAuthenticated(false)
+    setAuthUser(null)
     setActivePage('dashboard')
     setGlobalSearch('')
   }
@@ -60,14 +64,14 @@ export default function App() {
     if (page !== 'transactions') setGlobalSearch('')
   }
 
-  if (!isAuthenticated) {
+  if (!authUser) {
     return <Login onLogin={handleLogin} />
   }
 
   const PageComponent = PAGES[activePage] || Dashboard
 
   return (
-    <FinanceProvider>
+    <FinanceProvider userEmail={authUser.email}>
       <div className="flex h-screen bg-zinc-950 overflow-hidden">
         <Sidebar
           activePage={activePage}
